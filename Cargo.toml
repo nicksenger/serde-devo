@@ -1,0 +1,23 @@
+[workspace]
+members = [
+    "serde-devo",
+    "serde-devo-derive",
+    "serde-devo-tests",
+]
+resolver = "2"
+
+[workspace.package]
+authors = ["Nick Senger <dev@nsenger.com>"]
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+ciborium = { version = "*" }
+quote = { version = "*" }
+proc-macro2 = "*"
+rmp-serde = { version = "*" }
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+serde-devo = { path = "./serde-devo", features = ["json"] }
+serde-devo-derive = { path = "./serde-devo-derive", features = ["json"] }
+syn = { version = "2", features = ["full", "extra-traits"] }
