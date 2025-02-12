@@ -91,9 +91,22 @@ pub fn devolve_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 |(d, b, mut st, mut evo, mut dvo), (i, f)| {
                     let is_named = f.ident.is_some();
                     let (is_devo, tokens, ev, dv) = if is_named {
-                        render_field(f, &devo_attr, false, &fallback_type)
+                        render_field(
+                            name.to_string().to_token_stream(),
+                            f,
+                            &devo_attr,
+                            false,
+                            &fallback_type,
+                        )
                     } else {
-                        render_tuple_field(f, &devo_attr, i, None, &fallback_type)
+                        render_tuple_field(
+                            name.to_string().into_token_stream(),
+                            f,
+                            &devo_attr,
+                            i,
+                            None,
+                            &fallback_type,
+                        )
                     };
                     st.append_all(tokens);
                     evo.append_all(ev);
@@ -212,7 +225,8 @@ pub fn devolve_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         match self {
                             #evo_impl
                             _ => {
-                                Err(::serde_devo::Error::default())
+                                let mut e = ::serde_devo::Error::UnknownVariant { ty: "", path: vec![] };
+                                Err(e)
                             }
                         }
                     }
@@ -251,18 +265,18 @@ pub fn devolve_impl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     quote! {
         #d
 
-        impl #impl_generics ::serde_devo::Devolvable<#fallback_type> for #name #ty_generics #where_clause {
+        impl #impl_generics ::serde_devo::Devolve<#fallback_type> for #name #ty_generics #where_clause {
             type Devolved = #devo_name #ty_generics;
 
-            fn devolve(self) -> Self::Devolved {
+            fn into_devolved(self) -> Self::Devolved {
                 #devo_impl
             }
         }
 
-        impl #impl_generics ::serde_devo::Evolvable<#fallback_type> for #devo_name #ty_generics #where_clause {
+        impl #impl_generics ::serde_devo::Evolve<#fallback_type> for #devo_name #ty_generics #where_clause {
             type Evolved = #name #ty_generics;
 
-            fn try_evolve(self) -> Result<Self::Evolved, ::serde_devo::Error> {
+            fn try_into_evolved(self) -> Result<Self::Evolved, ::serde_devo::Error> {
                 #evo_impl
             }
         }
@@ -325,9 +339,22 @@ fn render_variant(
             |(b, mut st, mut evo, mut dvo), (i, (f, l))| {
                 let is_named = f.ident.is_some();
                 let (_is_devo, tokens, ev, dv) = if is_named {
-                    render_field(f, devo_attr, true, fallback_type)
+                    render_field(
+                        format!("{evo_name}::{ident}").to_token_stream(),
+                        f,
+                        devo_attr,
+                        true,
+                        fallback_type,
+                    )
                 } else {
-                    render_tuple_field(f, devo_attr, i, Some(l), fallback_type)
+                    render_tuple_field(
+                        format!("{evo_name}::{ident}").to_token_stream(),
+                        f,
+                        devo_attr,
+                        i,
+                        Some(l),
+                        fallback_type,
+                    )
                 };
                 st.append_all(tokens);
                 evo.append_all(ev);
@@ -414,6 +441,7 @@ fn render_variant(
 }
 
 fn render_tuple_field(
+    parent_ty: TokenStream,
     Field { vis, attrs, ty, .. }: Field,
     devo_attr: &Ident,
     i: usize,
@@ -429,6 +457,7 @@ fn render_tuple_field(
     })
     .parse::<TokenStream>()
     .unwrap();
+    let idx = i.to_string().to_token_stream();
     if is_devo {
         if let Some(id) = match ty {
             Type::Path(p) => p.path.get_ident(),
@@ -439,13 +468,13 @@ fn render_tuple_field(
                 is_devo,
                 quote! {
                     #attrs
-                    #vis <#devolved_ident as ::serde_devo::Devolvable<#fallback_type>>::Devolved,
+                    #vis <#devolved_ident as ::serde_devo::Devolve<#fallback_type>>::Devolved,
                 },
                 quote! {
-                    <<#devolved_ident as ::serde_devo::Devolvable<#fallback_type>>::Devolved as ::serde_devo::Evolvable<#fallback_type>>::try_evolve(#member)?,
+                    <<#devolved_ident as ::serde_devo::Devolve<#fallback_type>>::Devolved as ::serde_devo::Evolve<#fallback_type>>::try_into_evolved(#member).map_err(|e| e.extend(#parent_ty, #idx))?,
                 },
                 quote! {
-                    <#devolved_ident as ::serde_devo::Devolvable<#fallback_type>>::devolve(#member),
+                    <#devolved_ident as ::serde_devo::Devolve<#fallback_type>>::into_devolved(#member),
                 },
             );
         }
@@ -467,6 +496,7 @@ fn render_tuple_field(
 }
 
 fn render_field(
+    parent_ty: TokenStream,
     Field {
         vis,
         attrs,
@@ -480,8 +510,9 @@ fn render_field(
 ) -> (bool, TokenStream, TokenStream, TokenStream) {
     let ty = &ty;
     let (is_devo, _, attrs) = render_attrs(attrs, devo_attr);
+    let i = format!("{}", ident.as_ref().unwrap());
     let member = (if is_enum {
-        format!("{}", ident.as_ref().unwrap())
+        i.clone()
     } else {
         format!("self.{}", ident.as_ref().unwrap())
     })
@@ -497,13 +528,13 @@ fn render_field(
                 is_devo,
                 quote! {
                     #attrs
-                    #vis #ident: <#devolved_ident as ::serde_devo::Devolvable<#fallback_type>>::Devolved,
+                    #vis #ident: <#devolved_ident as ::serde_devo::Devolve<#fallback_type>>::Devolved,
                 },
                 quote! {
-                    #ident: <<#devolved_ident as ::serde_devo::Devolvable<#fallback_type>>::Devolved as ::serde_devo::Evolvable<#fallback_type>>::try_evolve(#member)?,
+                    #ident: <<#devolved_ident as ::serde_devo::Devolve<#fallback_type>>::Devolved as ::serde_devo::Evolve<#fallback_type>>::try_into_evolved(#member).map_err(|e| e.extend(#parent_ty, #i))?,
                 },
                 quote! {
-                    #ident: <#devolved_ident as ::serde_devo::Devolvable<#fallback_type>>::devolve(#member),
+                    #ident: <#devolved_ident as ::serde_devo::Devolve<#fallback_type>>::into_devolved(#member),
                 },
             );
         }

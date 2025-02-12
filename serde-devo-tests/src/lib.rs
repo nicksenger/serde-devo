@@ -1,9 +1,13 @@
+#[cfg(doctest)]
+#[doc = include_str!("../../README.md")]
+struct Readme;
+
 #[cfg(test)]
 mod type_coverage {
     use std::collections::VecDeque;
 
     use serde::{Deserialize, Serialize};
-    use serde_devo::{Devolvable, Devolve, Evolvable};
+    use serde_devo::{Devolve, Evolve};
 
     #[derive(Default, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Devolve)]
     struct StructOne {
@@ -134,34 +138,34 @@ mod type_coverage {
     #[test]
     fn test_roundtrip_through_devo() {
         let initial = StructOne::default();
-        let evo_json = serde_json::to_string(&initial.clone().devolve()).unwrap();
+        let evo_json = serde_json::to_string(&initial.clone().into_devolved()).unwrap();
         let devolved: DevolvedStructOne = serde_json::from_str(&evo_json).unwrap();
-        let reevolved = devolved.try_evolve().unwrap();
-        let devo_json = serde_json::to_string(&reevolved.devolve()).unwrap();
+        let reevolved = devolved.try_into_evolved().unwrap();
+        let devo_json = serde_json::to_string(&reevolved.into_devolved()).unwrap();
         let finished = serde_json::from_str::<DevolvedStructOne>(&devo_json)
             .unwrap()
-            .try_evolve()
+            .try_into_evolved()
             .unwrap();
         assert_eq!(initial, finished);
 
-        let evo_mp = rmp_serde::to_vec(&initial.clone().devolve()).unwrap();
+        let evo_mp = rmp_serde::to_vec(&initial.clone().into_devolved()).unwrap();
         let devolved: DevolvedStructOne = rmp_serde::from_slice(&evo_mp).unwrap();
-        let reevolved = devolved.try_evolve().unwrap();
-        let devo_mp = rmp_serde::to_vec(&reevolved.devolve()).unwrap();
+        let reevolved = devolved.try_into_evolved().unwrap();
+        let devo_mp = rmp_serde::to_vec(&reevolved.into_devolved()).unwrap();
         let finished = rmp_serde::from_slice::<DevolvedStructOne>(&devo_mp)
             .unwrap()
-            .try_evolve()
+            .try_into_evolved()
             .unwrap();
         assert_eq!(initial, finished);
 
         let mut rw = VecDeque::new();
-        ciborium::into_writer(&initial.clone().devolve(), &mut rw).unwrap();
+        ciborium::into_writer(&initial.clone().into_devolved(), &mut rw).unwrap();
         let devolved: DevolvedStructOne = ciborium::from_reader(&mut rw).unwrap();
-        let reevolved = devolved.try_evolve().unwrap();
-        ciborium::into_writer(&reevolved.devolve(), &mut rw).unwrap();
+        let reevolved = devolved.try_into_evolved().unwrap();
+        ciborium::into_writer(&reevolved.into_devolved(), &mut rw).unwrap();
         let finished = ciborium::from_reader::<DevolvedStructOne, _>(&mut rw)
             .unwrap()
-            .try_evolve()
+            .try_into_evolved()
             .unwrap();
         assert_eq!(initial, finished);
     }
@@ -172,15 +176,15 @@ mod generic {
     use std::{collections::VecDeque, fmt::Debug};
 
     use serde::{Deserialize, Serialize};
-    use serde_devo::{Devolvable, Devolve, Evolvable};
+    use serde_devo::{Devolve, Evolve};
 
     #[derive(Default, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Devolve)]
     enum FlexibleEnum<T, U, V, W>
     where
-        T: Default + Clone + Debug + PartialEq + Devolvable,
-        <T as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
-        U: Default + Clone + Debug + PartialEq + Devolvable,
-        <U as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        T: Default + Clone + Debug + PartialEq + Devolve,
+        <T as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        U: Default + Clone + Debug + PartialEq + Devolve,
+        <U as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
         V: Default + Clone + Debug + PartialEq,
         W: Default + Clone + Debug + PartialEq,
     {
@@ -199,10 +203,10 @@ mod generic {
 
     impl<T, U, V, W> FlexibleEnum<T, U, V, W>
     where
-        T: Default + Clone + Debug + PartialEq + Devolvable,
-        <T as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
-        U: Default + Clone + Debug + PartialEq + Devolvable,
-        <U as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        T: Default + Clone + Debug + PartialEq + Devolve,
+        <T as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        U: Default + Clone + Debug + PartialEq + Devolve,
+        <U as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
         V: Default + Clone + Debug + PartialEq,
         W: Default + Clone + Debug + PartialEq,
     {
@@ -228,10 +232,10 @@ mod generic {
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Devolve)]
     enum NewFlexibleEnum<T, U, V, W>
     where
-        T: Default + Clone + Debug + PartialEq + Devolvable,
-        <T as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
-        U: Default + Clone + Debug + PartialEq + Devolvable,
-        <U as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        T: Default + Clone + Debug + PartialEq + Devolve,
+        <T as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        U: Default + Clone + Debug + PartialEq + Devolve,
+        <U as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
         V: Default + Clone + Debug + PartialEq,
         W: Default + Clone + Debug + PartialEq,
     {
@@ -251,10 +255,10 @@ mod generic {
 
     impl<T, U, V, W> Default for NewFlexibleEnum<T, U, V, W>
     where
-        T: Default + Clone + Debug + PartialEq + Devolvable,
-        <T as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
-        U: Default + Clone + Debug + PartialEq + Devolvable,
-        <U as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        T: Default + Clone + Debug + PartialEq + Devolve,
+        <T as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        U: Default + Clone + Debug + PartialEq + Devolve,
+        <U as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
         V: Default + Clone + Debug + PartialEq,
         W: Default + Clone + Debug + PartialEq,
     {
@@ -271,10 +275,10 @@ mod generic {
     #[derive(Default, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Devolve)]
     struct FlexibleStruct<T, U, V, W>
     where
-        T: Default + Clone + Debug + PartialEq + Devolvable,
-        <T as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
-        U: Default + Clone + Debug + PartialEq + Devolvable,
-        <U as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        T: Default + Clone + Debug + PartialEq + Devolve,
+        <T as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        U: Default + Clone + Debug + PartialEq + Devolve,
+        <U as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
         V: Default + Clone + Debug + PartialEq,
         W: Default + Clone + Debug + PartialEq,
     {
@@ -289,10 +293,10 @@ mod generic {
     #[derive(Default, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Devolve)]
     struct FlexibleTupleStruct<T, U, V, W>(#[devo] T, #[devo] U, V, W)
     where
-        T: Default + Clone + Debug + PartialEq + Devolvable,
-        <T as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
-        U: Default + Clone + Debug + PartialEq + Devolvable,
-        <U as Devolvable>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        T: Default + Clone + Debug + PartialEq + Devolve,
+        <T as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
+        U: Default + Clone + Debug + PartialEq + Devolve,
+        <U as Devolve>::Devolved: for<'a> Deserialize<'a> + Serialize,
         V: Default + Clone + Debug + PartialEq,
         W: Default + Clone + Debug + PartialEq;
 
@@ -361,34 +365,34 @@ mod generic {
             FlexibleTupleStruct::<ConcreteEnum, ConcreteEnum, ConcreteStruct, ConcreteTupleStruct>::default(),
             FlexibleEnum::<ConcreteEnum, ConcreteEnum, ConcreteStruct, ConcreteTupleStruct>::anonymous(),
         );
-        let evo_json = serde_json::to_string(&initial.clone().devolve()).unwrap();
+        let evo_json = serde_json::to_string(&initial.clone().into_devolved()).unwrap();
         let devolved: MyVeryComplexDevolvedType = serde_json::from_str(&evo_json).unwrap();
-        let reevolved = devolved.try_evolve().unwrap();
-        let devo_json = serde_json::to_string(&reevolved.devolve()).unwrap();
+        let reevolved = devolved.try_into_evolved().unwrap();
+        let devo_json = serde_json::to_string(&reevolved.into_devolved()).unwrap();
         let finished = serde_json::from_str::<MyVeryComplexDevolvedType>(&devo_json)
             .unwrap()
-            .try_evolve()
+            .try_into_evolved()
             .unwrap();
         assert_eq!(initial, finished);
 
-        let evo_mp = rmp_serde::to_vec(&initial.clone().devolve()).unwrap();
+        let evo_mp = rmp_serde::to_vec(&initial.clone().into_devolved()).unwrap();
         let devolved: MyVeryComplexDevolvedType = rmp_serde::from_slice(&evo_mp).unwrap();
-        let reevolved = devolved.try_evolve().unwrap();
-        let devo_mp = rmp_serde::to_vec(&reevolved.devolve()).unwrap();
+        let reevolved = devolved.try_into_evolved().unwrap();
+        let devo_mp = rmp_serde::to_vec(&reevolved.into_devolved()).unwrap();
         let finished = rmp_serde::from_slice::<MyVeryComplexDevolvedType>(&devo_mp)
             .unwrap()
-            .try_evolve()
+            .try_into_evolved()
             .unwrap();
         assert_eq!(initial, finished);
 
         let mut rw = VecDeque::new();
-        ciborium::into_writer(&initial.clone().devolve(), &mut rw).unwrap();
+        ciborium::into_writer(&initial.clone().into_devolved(), &mut rw).unwrap();
         let devolved: MyVeryComplexDevolvedType = ciborium::from_reader(&mut rw).unwrap();
-        let reevolved = devolved.try_evolve().unwrap();
-        ciborium::into_writer(&reevolved.devolve(), &mut rw).unwrap();
+        let reevolved = devolved.try_into_evolved().unwrap();
+        ciborium::into_writer(&reevolved.into_devolved(), &mut rw).unwrap();
         let finished = ciborium::from_reader::<MyVeryComplexDevolvedType, _>(&mut rw)
             .unwrap()
-            .try_evolve()
+            .try_into_evolved()
             .unwrap();
         assert_eq!(initial, finished);
     }
@@ -401,34 +405,34 @@ mod generic {
             FlexibleTupleStruct::<ConcreteEnum, ConcreteEnum, ConcreteStruct, ConcreteTupleStruct>::default(),
             FlexibleEnum::<ConcreteEnum, ConcreteEnum, ConcreteStruct, ConcreteTupleStruct>::anonymous(),
         );
-        let evo_json = serde_json::to_string(&initial.clone().devolve()).unwrap();
+        let evo_json = serde_json::to_string(&initial.clone().into_devolved()).unwrap();
         let devolved: MyVeryComplexDevolvedType = serde_json::from_str(&evo_json).unwrap();
-        let reevolved = devolved.try_evolve().unwrap();
-        let devo_json = serde_json::to_string(&reevolved.devolve()).unwrap();
+        let reevolved = devolved.try_into_evolved().unwrap();
+        let devo_json = serde_json::to_string(&reevolved.into_devolved()).unwrap();
         let finished = serde_json::from_str::<MyVeryComplexDevolvedType>(&devo_json)
             .unwrap()
-            .try_evolve()
+            .try_into_evolved()
             .unwrap();
         assert_eq!(initial, finished);
 
-        let evo_mp = rmp_serde::to_vec(&initial.clone().devolve()).unwrap();
+        let evo_mp = rmp_serde::to_vec(&initial.clone().into_devolved()).unwrap();
         let devolved: MyVeryComplexDevolvedType = rmp_serde::from_slice(&evo_mp).unwrap();
-        let reevolved = devolved.try_evolve().unwrap();
-        let devo_mp = rmp_serde::to_vec(&reevolved.devolve()).unwrap();
+        let reevolved = devolved.try_into_evolved().unwrap();
+        let devo_mp = rmp_serde::to_vec(&reevolved.into_devolved()).unwrap();
         let finished = rmp_serde::from_slice::<MyVeryComplexDevolvedType>(&devo_mp)
             .unwrap()
-            .try_evolve()
+            .try_into_evolved()
             .unwrap();
         assert_eq!(initial, finished);
 
         let mut rw = VecDeque::new();
-        ciborium::into_writer(&initial.clone().devolve(), &mut rw).unwrap();
+        ciborium::into_writer(&initial.clone().into_devolved(), &mut rw).unwrap();
         let devolved: MyVeryComplexDevolvedType = ciborium::from_reader(&mut rw).unwrap();
-        let reevolved = devolved.try_evolve().unwrap();
-        ciborium::into_writer(&reevolved.devolve(), &mut rw).unwrap();
+        let reevolved = devolved.try_into_evolved().unwrap();
+        ciborium::into_writer(&reevolved.into_devolved(), &mut rw).unwrap();
         let finished = ciborium::from_reader::<MyVeryComplexDevolvedType, _>(&mut rw)
             .unwrap()
-            .try_evolve()
+            .try_into_evolved()
             .unwrap();
         assert_eq!(initial, finished);
     }
@@ -442,7 +446,7 @@ mod generic {
             FlexibleEnum::<ConcreteEnum, ConcreteEnum, ConcreteStruct, ConcreteTupleStruct>::default(),
         );
         let mut evo_cbor = VecDeque::new();
-        ciborium::into_writer(&initial.clone().devolve(), &mut evo_cbor).unwrap();
+        ciborium::into_writer(&initial.clone().into_devolved(), &mut evo_cbor).unwrap();
         let evo_rmp = rmp_serde::to_vec(&initial).unwrap();
         let evo_json = serde_json::to_string(&initial).unwrap();
 
